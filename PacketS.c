@@ -95,7 +95,7 @@ void PrintingPackets(unsigned char *buffer){
     	printf("\t\t\t |- Header Checksum : %d\n", (unsigned short)ntohs(iph->HeaderChecksum));
 		source.sin_addr.s_addr = iph->SourceAddr;
     	dest.sin_addr.s_addr = iph->DestAddr;
-    	printf("\t\t\t |- Source IP : %s\n", inet_ntoa(source.sin_addr)); //converting addresses into a string so it could be printed
+    	printf("\t\t\t |- Source IP : %s\n", inet_ntoa(source.sin_addr)); //Converting addresses into a string so it could be printed
     	printf("\t\t\t |- Destination IP : %s\n", inet_ntoa(dest.sin_addr));
 		if(iph->Protocol == 6){
 			struct tcpheader *tcph = (struct tcpheader *)buffer;
@@ -106,7 +106,7 @@ void PrintingPackets(unsigned char *buffer){
     		printf("\t\t\t |- Acknowledge Number\t : %d\n", (unsigned int)ntohs(tcph->AckNumber));
     		printf("\t\t\t |-Header Length : %d DWORDS or %d BYTES\n", (unsigned int)tcph->DataOffset, (unsigned int)tcph->DataOffset * 4);
     		printf("\n------------------------------------------------------flags------------------------------------------------------\n");
-    		printf("\t\t\t\t |-Urgent flag : %d\n", (unsigned int)tcph->Urg); //printing flags, each flag represent a different purpose and it's 1 bit in size
+    		printf("\t\t\t\t |-Urgent flag : %d\n", (unsigned int)tcph->Urg); //Printing flags, each flag represent a different purpose and it's 1 bit in size
     		printf("\t\t\t\t |-Acknowledgement flag : %d\n", (unsigned int)tcph->Ack);
     		printf("\t\t\t\t |-push flag : %d\n", (unsigned int)tcph->Psh);
     		printf("\t\t\t\t |-Reset flag : %d\n", (unsigned int)tcph->Rst);
