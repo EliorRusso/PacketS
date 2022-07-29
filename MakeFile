@@ -1,0 +1,3 @@
+PacketSniffer:
+	gcc PacketSniffer.c -o PacketSniffer
+clean: rm *.o PacketSniffer
