@@ -11,51 +11,11 @@
 #include <features.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "PacketSniffer.h"
 #define ETH_ALEN 6
 
 int sock_raw;
 struct sockaddr_in source,dest;
-struct ethdr { //
-	unsigned char h_dest[ETH_ALEN];
-	unsigned char h_source[ETH_ALEN];
-	__be16 h_proto;
-}__attribute__((packed));
-struct iphr{
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
-    	unsigned int ihl:4;
-    	unsigned int version:4;
-	#elif __BYTE_ORDER == __BIG_ENDIAN //order is crucial so when printed it wont print opposite values for version and ihl.
-    	unsigned int version:4;
-    	unsigned int ihl:4;
-	#endif
-	unsigned int TypeOfService:8;
-	unsigned int TotalLength:16;//Total length of the datagram.
-	unsigned int Identification:16;
-	unsigned int Flags:3;
-	unsigned int FragmentOffset:13;
-	unsigned int Ttl:8;
-	unsigned int Protocol:8;
-	unsigned int HeaderChecksum:16;
-	unsigned int SourceAddr;
-	unsigned int DestAddr;
-}__attribute__((packed));
-struct tcpheader{
-	short int SourcePort;
-	short int DestinationPort;
-	unsigned int SequenceNumber;
-	unsigned int AckNumber;
-	unsigned int DataOffset:4;
-	unsigned int Reserved:6;
-	unsigned int Urg:1;
-	unsigned int Ack:1;
-	unsigned int Psh:1;
-	unsigned int Rst:1;
-	unsigned int Syn:1;
-	unsigned int Fin:1;
-	short int Window;
-	short int Checksum;
-	short int UrgentPointer;
-}__attribute__((packed)); //compresses the information to save memory.
 void SocketConnect(unsigned char *buffer){
 	int sock_raw;
 	struct sockaddr_in source, dest;
@@ -77,6 +37,7 @@ void SocketConnect(unsigned char *buffer){
 }
 void PrintingPackets(unsigned char *buffer){
 		struct ethdr *eth = (struct ethhdr *) (buffer);
+	if(ntohs(eth->h_proto) == 2048){
 		printf("Ethernet Header \n"); //printing mac addresses in hexa
 		printf("Source As : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_source[0],eth->h_source[1],eth->h_source[2],eth->h_source[3],eth->h_source[4],eth->h_source[5]);
 		printf("Destination Address : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_dest[0],eth->h_dest[1],eth->h_dest[2],eth->h_dest[3],eth->h_dest[4],eth->h_dest[5]);
@@ -87,11 +48,11 @@ void PrintingPackets(unsigned char *buffer){
 		printf("IP header\n");
     	printf("\t\t\t |- Version : %d\n", iph->version); 
     	printf("\t\t\t |- Inter Header Length : %d DWORDS or %d BYTES\n", (unsigned int)iph->ihl, (unsigned int)iph->ihl * 4);
-		printf("\t\t\t |- Type Of Service : %d\n", (unsigned char)iph->TypeOfService);
-    	printf("\t\t\t |- Total Length : %d Bytes\n", (unsigned short)ntohs(iph->TotalLength));
-    	printf("\t\t\t |- Identification : %d\n", (unsigned short)iph->Identification);
-    	printf("\t\t\t |- Time To Live : %d\n", (unsigned char)iph->Ttl);
-    	printf("\t\t\t |- Protocol : %d\n", (unsigned char)iph->Protocol);
+		printf("\t\t\t |- Type Of Service : %d\n", (unsigned char)iph->TypeOfService); //Also can be called Qos(Quality Of Service)
+    	printf("\t\t\t |- Total Length : %d Bytes\n", (unsigned short)ntohs(iph->TotalLength)); //Length of the datagram
+    	printf("\t\t\t |- Identification : %d\n", (unsigned short)iph->Identification); //Identification of the packet
+    	printf("\t\t\t |- Time To Live : %d\n", (unsigned char)iph->Ttl); //Indicated the maximum time a data is allowed to be on the network.
+    	printf("\t\t\t |- Protocol : %d\n", (unsigned char)iph->Protocol); //Protocol of the packet
     	printf("\t\t\t |- Header Checksum : %d\n", (unsigned short)ntohs(iph->HeaderChecksum));
 		source.sin_addr.s_addr = iph->SourceAddr;
     	dest.sin_addr.s_addr = iph->DestAddr;
@@ -115,9 +76,31 @@ void PrintingPackets(unsigned char *buffer){
     		printf("\t\t\t |-Window size  :%d\n", (unsigned short)ntohs(tcph->Window));
     		printf("\t\t\t |- checksum  :%d\n", (unsigned short)ntohs(tcph->Checksum));
     		printf("\t\t\t |- Urgent pointer  :%d\n", (unsigned short)ntohs(tcph->UrgentPointer));
-    		printf("\n******************************************************END OF PACKET******************************************************\n");
-
+			char *remain;
+			remain = buffer + sizeof(struct ethdr) + iph->ihl * 4 + tcph->DataOffset * 4;
+			while (*remain){
+				printf("%.2x\t", (unsigned)*remain);
+				remain++;
+			}
 		}
+		if(iph->Protocol == 17){
+			struct udpheader *udph = (struct udpheader*)buffer;
+    		printf("\nUdp Header\n");
+    		printf("\t\t\t |- Source Port\t : %d\n", (unsigned short)ntohs(udph->SourcePort));
+    		printf("\t\t\t |- Destination Port\t : %d\n", (unsigned short)ntohs(udph->DestinationPort));
+			printf("\t\t\t |- Total Length : %d Bytes\n", (unsigned short)ntohs(udph->Length)); //Length of the datagram
+			printf("\t\t\t |- Checksum : %d\n", (unsigned short)ntohs(udph->Checksum));
+			char *remain;
+			remain = buffer +sizeof(eth) + iph->ihl * 4 + sizeof(udph);
+			while (*remain){
+				printf("%.2x\t", (unsigned)*remain);
+				remain++;
+			}
+			
+		}
+		free(buffer);
+		close(SOCK_RAW);
+	}
 }
 int main(){
 	while(1){
